@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OBS Replay Buffer Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5.0/dist/obs-ws.min.js"></script>
+    <script>
+
+    // The obs machine ip and port
+    const obsHost = "127.0.0.1:4455";
+
+    // The obs-websocket password 
+    const obsPassword = "YourPasswordHERE";
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // register page load event listener to start work
+    window.addEventListener("load", init, false);
+
+    // some variables, don't change!
+    var interval = null;
+    var connectionIsOpen = false;
+    const obs = new OBSWebSocket();
+    var replayBufferActive = false;
+    var saveButton = null;
+
+    // initialize
+    function init() {
+        attemptConnection();
+        saveButton = document.getElementById("saveButton");
+        saveButton.addEventListener("click", buttonWasClicked);
+    }
+
+    // Handle websocket connection stuff
+    async function attemptConnection() {
+        // Try to connect to obs
+        try {
+            const {
+                obsWebSocketVersion,
+                negotiatedRpcVersion
+            } = await obs.connect(`ws://${obsHost}`, obsPassword, {rpcVersion: 1});
+            console.log(`Connected to obs-websocket ${obsWebSocketVersion} (using RPC ${negotiatedRpcVersion})`);
+            toggleErrorDivVisibility(true);
+        } catch (error) {
+            console.error("Failed to connect", error.code, error.message);
+            if (error.message == "Cannot access 'obs' before initialization") {
+                toggleErrorDivVisibility(false, "Could not load websocket library. Please check your internet connection.");
+            } else {
+                toggleErrorDivVisibility(false, `The connection to obs failed with the following error: ${error.message || "No reason specified"}`);
+            }
+            
+        }
+    }
+
+    // obs-websocket connection was closed for whatever reason
+    obs.on("ConnectionClosed", () => {
+        console.log("Connection to obs-websocket was closed");
+        connectionIsOpen = false;
+            if (!interval) {
+                interval = setInterval(attemptConnection, 5000);
+            }
+    });
+
+    // Identified is the new open
+    obs.on("Identified", () => {
+            clearInterval(interval);
+            connectionIsOpen = true;
+            interval = null;
+            getInitialState();
+    });
+
+    // request the initial filter status
+    async function getInitialState() {
+        try {
+            await getInitialState_ReplayBufferState();
+        }  catch (error) {
+            console.error("There was an error getting the initial state", error);
+        }
+    }
+
+    // sync initial state
+    async function getInitialState_ReplayBufferState() {
+        const state = await obs.call("GetReplayBufferStatus");
+        ReplayBufferStateChanged(state);
+    }
+
+    // Handle replay buffer state changes (active/inactive)
+    obs.on("ReplayBufferStateChanged", ReplayBufferStateChanged);
+    async function ReplayBufferStateChanged(state) {
+        let { outputActive } = state;
+        replayBufferActive = outputActive;
+        if (replayBufferActive) {
+            saveButton.style.backgroundColor = "red";
+            saveButton.innerText = "save";
+        } else {
+            saveButton.style.backgroundColor = "";
+            saveButton.innerText = "start";
+        }
+    }
+
+    // Handle replay buffer save
+    obs.on("ReplayBufferSaved", ReplayBufferSaved);
+    async function ReplayBufferSaved(path) {
+        if (path.savedReplayPath) {
+            saveButton.innerText = "saved";
+            saveButton.style.backgroundColor = "green";
+            setTimeout(() => {
+                saveButton.style.backgroundColor = "red";
+                setTimeout(() => {
+                    saveButton.style.backgroundColor = "green";
+                    setTimeout(() => {
+                        ReplayBufferStateChanged({outputActive: replayBufferActive});
+                    }, 500)
+                }, 500)
+            }, 500)
+        }
+    }
+
+    // Handle button clicks
+    async function buttonWasClicked(event) {
+        if (!replayBufferActive) {
+            // start replay buffer
+            try {
+                await obs.call("StartReplayBuffer");
+            }  catch (error) {
+                console.error("There was an error starting the replay buffer", error);
+            }
+        } else {
+            // save replay buffer
+            saveButton.innerText = "saving..";
+            try {
+                await obs.call("SaveReplayBuffer");
+            }  catch (error) {
+                console.error("There was an error saving the replay buffer", error);
+            }
+        }
+    }
+
+    function toggleErrorDivVisibility(hidden = True, message = "") {
+        errorbox = document.getElementById("errorbox")
+        buttonbox = document.getElementById("buttonbox")
+
+        if (hidden) {
+            errorbox.style.display = "none";
+            buttonbox.style.display = "block";
+        } else {
+            errorbox.textContent = message;
+            errorbox.style.display = "block";
+            buttonbox.style.display = "none";
+        }
+    }	
+    </script>
+    <style>
+    html {
+        height: 100%;
+    }
+
+    body {
+        background: #2b2e38;
+        color: white;
+        font-family: Arial;
+        overflow: hidden;
+        margin: 0px;
+        height: 100%;
+    }
+
+    .container {
+        display: none;
+        height: 100%;
+    }
+
+    #saveButton {
+        width: 100%;
+        height: 100%;
+        font-size: 3em;
+        text-transform: uppercase;
+    }
+
+    img {
+        margin-top: 5px;
+    }
+
+    .errorbox {
+        display: block
+    }
+    </style>
+</head>
+<body>
+    <div class="container" id="buttonbox"><button id="saveButton">start</button></div>
+    <div class="errorbox" id="errorbox"></div>
+</body>
+</html>
