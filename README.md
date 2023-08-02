@@ -18,7 +18,7 @@ This only works if you are not running a portable obs instance.
 ## Usage
 
 - To open the button in your web browser, just double click the controller.html file
-- To open the button in a dedicated window without the need for your browser running, double click the "launch-elecap.bat" file
+- To open the button in a dedicated window without the need for your browser running, double click the "launch-elecap.bat" or "launch-elecap-on-top.bat"(window will stay above active applications) file. You might not see something happening for a few seconds after opening while the application loads.
 - Once open the button will try to connect to obs and might display an error message if it's not already running until you launch it.
 
 Behaviour:
