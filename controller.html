@@ -13,6 +13,9 @@
     // The obs-websocket password 
     const obsPassword = "YourPasswordHERE";
 
+    // Block button to avoid overlapping clips (false/true)
+    const avoidClipOverlays = false;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // register page load event listener to start work
@@ -24,6 +27,8 @@
     const obs = new OBSWebSocket();
     var replayBufferActive = false;
     var saveButton = null;
+    var lastSaveTrigger = 0;
+    var replayBufferTime = null;
 
     // initialize
     function init() {
@@ -83,6 +88,11 @@
     async function getInitialState_ReplayBufferState() {
         const state = await obs.call("GetReplayBufferStatus");
         ReplayBufferStateChanged(state);
+        const {parameterValue: replayBufferEnabled} = await obs.call("GetProfileParameter", {parameterCategory: "AdvOut", parameterName: "RecRB"});
+        if (replayBufferEnabled) {
+            const {parameterValue} = await obs.call("GetProfileParameter", {parameterCategory: "AdvOut", parameterName: "RecRBTime"});
+            replayBufferTime = parseInt(parameterValue)*1000;
+        }
     }
 
     // Handle replay buffer state changes (active/inactive)
@@ -127,10 +137,19 @@
                 console.error("There was an error starting the replay buffer", error);
             }
         } else {
-            // save replay buffer
+            // save replay buffer if blocking wasn't triggered
+            if (avoidClipOverlays && replayBufferTime && Date.now() - lastSaveTrigger < replayBufferTime) {
+                saveButton.innerText = "blocked!";
+                setTimeout(async () => {
+                        const state = await obs.call("GetReplayBufferStatus");
+                        ReplayBufferStateChanged(state);
+                    }, 1500)
+                return;
+            }
             saveButton.innerText = "saving..";
             try {
                 await obs.call("SaveReplayBuffer");
+                lastSaveTrigger = Date.now();
             }  catch (error) {
                 console.error("There was an error saving the replay buffer", error);
             }

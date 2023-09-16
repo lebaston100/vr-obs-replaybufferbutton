@@ -29,6 +29,7 @@ Behaviour:
 - Once obs reports that it's saved the replay buffer, the button blinks green -> red twice and text shows "saved"
 - Clicking the button while the replay buffer is inactive starts the replay buffer in obs (starts the recording to ram)
 - Clicking the button while the replay buffer is recording triggers a replay buffer save (dump ram recording to disk)
+- If "avoidClipOverlays" in the controller.html file was set to "true"(default "false"), pressing save while the last clip save was triggered less then the configured replay buffer time ago will block the save (available to avoid overlapping clips)
 
 ### Manual Setup
 
