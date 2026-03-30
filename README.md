@@ -34,7 +34,7 @@ Behaviour:
 ### Manual Setup
 
 - [Download this repository](https://github.com/lebaston100/vr-obs-replaybufferbutton/archive/master.zip) and extract it
-- Download the [latest electron capture](https://github.com/steveseguin/electroncapture/releases/latest/download/elecap_win_portable.zip) portable version and exctract the elecap.exe into the "vr-obs-replaybufferbutton" folder you created before
+- Download the [latest electron capture](https://github.com/steveseguin/electroncapture/releases/tag/v2.23.2) portable version and extract the elecap.exe into the "vr-obs-replaybufferbutton" folder you created before
 - Open OBS, under "Tools" -> "WebSocket Server Settings" check "Enable WebSocket server"
 - Click the "Show Connect Info" button and copy the "Server Password"
 - If the "Server Port" is not 4455, make note of the new port
